@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#166534">
+<title>Keuangan Pribadi</title>
+
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f3f6f4;color:#1f2937}
+header{background:#166534;color:white;padding:22px 18px}
+header h2{margin:0;font-size:21px}
+header p{margin:6px 0 0;font-size:13px;opacity:.85}
+nav{display:flex;background:white;border-bottom:1px solid #e5e7eb}
+nav button{flex:1;padding:15px 8px;border:0;background:white;color:#6b7280;font-size:14px}
+nav button.active{color:#166534;font-weight:bold;border-bottom:3px solid #166534}
+main{max-width:850px;margin:auto;padding:16px}
+.page{display:none}
+.page.active{display:block}
+.card{background:white;border-radius:14px;padding:18px;margin-bottom:15px;box-shadow:0 2px 8px #00000008}
+h3{font-size:17px;margin:0 0 16px}
+label{display:block;font-size:13px;font-weight:bold;margin:14px 0 7px}
+input{width:100%;padding:13px;border:1px solid #d1d5db;border-radius:9px;font-size:15px;background:white}
+.type-buttons{display:flex;gap:10px}
+.type-buttons button{flex:1;padding:13px;border:1px solid #d1d5db;border-radius:9px;background:white;font-weight:bold}
+.type-buttons .selected.in{background:#dcfce7;color:#15803d;border-color:#16a34a}
+.type-buttons .selected.out{background:#fee2e2;color:#dc2626;border-color:#dc2626}
+button{cursor:pointer}
+.primary{width:100%;padding:14px;border:0;border-radius:9px;background:#166534;color:white;font-size:15px;font-weight:bold;margin-top:20px}
+.primary:disabled{opacity:.5}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat{background:white;padding:16px;border-radius:12px;box-shadow:0 2px 8px #00000008}
+.stat small{color:#6b7280;font-size:12px}
+.stat strong{display:block;margin-top:8px;font-size:17px;overflow-wrap:anywhere}
+.balance{background:#166534;color:white;padding:20px;border-radius:14px;margin-bottom:14px}
+.balance small{opacity:.8}
+.balance strong{display:block;font-size:26px;margin-top:8px;overflow-wrap:anywhere}
+.green{color:#15803d}
+.red{color:#dc2626}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:700px;font-size:13px}
+th,td{padding:12px 9px;border-bottom:1px solid #e5e7eb;text-align:left;white-space:nowrap}
+th{background:#f8faf9;color:#4b5563}
+td.num{text-align:right}
+.actions button{border:0;background:none;padding:5px;font-weight:bold}
+.edit{color:#2563eb}
+.del{color:#dc2626}
+.export{width:100%;padding:13px;border:0;border-radius:9px;background:#166534;color:white;font-weight:bold;margin-bottom:15px}
+.empty{text-align:center;color:#9ca3af;padding:25px}
+.notice{font-size:12px;color:#6b7280;text-align:center;margin:15px 0}
+@media(max-width:480px){
+main{padding:12px}
+.balance strong{font-size:23px}
+.card{padding:15px}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<h2>Keuangan Pribadi</h2>
+<p>Catatan pemasukan dan pengeluaran</p>
+</header>
+
+<nav>
+<button id="navInput" class="active" onclick="showPage('input')">Input Transaksi</button>
+<button id="navReport" onclick="showPage('report')">Dashboard & Laporan</button>
+</nav>
+
+<main>
+
+<section id="inputPage" class="page active">
+<div class="card">
+<h3>Catat Transaksi</h3>
+
+<label for="date">Tanggal</label>
+<input type="date" id="date">
+
+<label for="amount">Nominal (Rp)</label>
+<input type="number" id="amount" placeholder="Contoh: 50000" min="1" inputmode="numeric">
+
+<label>Jenis Transaksi</label>
+<div class="type-buttons">
+<button type="button" id="btnIn" class="selected in" onclick="setType('masuk')">＋ Masuk</button>
+<button type="button" id="btnOut" onclick="setType('keluar')">− Keluar</button>
+</div>
+
+<label for="description">Keterangan</label>
+<input type="text" id="description" placeholder="Contoh: Gaji, makan, belanja">
+
+<button class="primary" id="saveBtn" onclick="saveTransaction()">Simpan Transaksi</button>
+</div>
+<div class="notice">Data tersimpan di perangkat ini.</div>
+</section>
+
+<section id="reportPage" class="page">
+
+<div class="balance">
+<small>Saldo Saat Ini</small>
+<strong id="balance">Rp0</strong>
+</div>
+
+<div class="stats">
+<div class="stat">
+<small>Total Pemasukan</small>
+<strong class="green" id="income">Rp0</strong>
+</div>
+<div class="stat">
+<small>Total Pengeluaran</small>
+<strong class="red" id="expense">Rp0</strong>
+</div>
+</div>
+
+<div class="card" style="margin-top:15px">
+<h3>Laporan Keuangan</h3>
+<button class="export" onclick="exportExcel()">↓ Export Laporan Excel</button>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>No.</th>
+<th>Tanggal</th>
+<th>Masuk</th>
+<th>Keluar</th>
+<th>Keterangan</th>
+<th>Total</th>
+<th>Aksi</th>
+</tr>
+</thead>
+<tbody id="reportBody">
+<tr><td colspan="7" class="empty">Belum ada transaksi</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="notice">Urutan laporan dari transaksi terlama ke terbaru.</div>
+</section>
+
+</main>
+
+<script>
+let db;
+let transactions = [];
+let selectedType = "masuk";
+let editingId = null;
+
+const DB_NAME = "KeuanganPribadiDB";
+const STORE = "transactions";
+
+function rupiah(value){
+ return new Intl.NumberFormat("id-ID",{
+  style:"currency",currency:"IDR",maximumFractionDigits:0
+ }).format(value);
+}
+
+function today(){
+ const d = new Date();
+ const offset = d.getTimezoneOffset();
+ return new Date(d.getTime()-offset*60000).toISOString().slice(0,10);
+}
+
+document.getElementById("date").value = today();
+
+function openDB(){
+ return new Promise((resolve,reject)=>{
+  const request = indexedDB.open(DB_NAME,1);
+
+  request.onupgradeneeded = e=>{
+   const database = e.target.result;
+   if(!database.objectStoreNames.contains(STORE)){
+    const store = database.createObjectStore(STORE,{
+     keyPath:"id",autoIncrement:true
+    });
+    store.createIndex("date","date",{unique:false});
+   }
+  };
+
+  request.onsuccess = e=>{
+   db=e.target.result;
+   resolve();
+  };
+  request.onerror = ()=>reject(request.error);
+ });
+}
+
+function getAll(){
+ return new Promise((resolve,reject)=>{
+  const request=db.transaction(STORE,"readonly")
+   .objectStore(STORE).getAll();
+  request.onsuccess=()=>resolve(request.result);
+  request.onerror=()=>reject(request.error);
+ });
+}
+
+function putData(data){
+ return new Promise((resolve,reject)=>{
+  const tx=db.transaction(STORE,"readwrite");
+  tx.objectStore(STORE).put(data);
+  tx.oncomplete=()=>resolve();
+  tx.onerror=()=>reject(tx.error);
+ });
+}
+
+function deleteData(id){
+ return new Promise((resolve,reject)=>{
+  const tx=db.transaction(STORE,"readwrite");
+  tx.objectStore(STORE).delete(id);
+  tx.oncomplete=()=>resolve();
+  tx.onerror=()=>reject(tx.error);
+ });
+}
+
+async function refresh(){
+ transactions=await getAll();
+ transactions.sort((a,b)=>
+  a.date.localeCompare(b.date) || a.id-b.id
+ );
+ render();
+}
+
+function setType(type){
+ selectedType=type;
+ document.getElementById("btnIn").className=
+  type==="masuk"?"selected in":"";
+ document.getElementById("btnOut").className=
+  type==="keluar"?"selected out":"";
+}
+
+function showPage(page){
+ document.getElementById("inputPage").classList.toggle("active",page==="input");
+ document.getElementById("reportPage").classList.toggle("active",page==="report");
+ document.getElementById("navInput").classList.toggle("active",page==="input");
+ document.getElementById("navReport").classList.toggle("active",page==="report");
+ if(page==="report") refresh();
+}
+
+async function saveTransaction(){
+ const date=document.getElementById("date").value;
+ const amount=Number(document.getElementById("amount").value);
+ const description=document.getElementById("description").value.trim();
+
+ if(!date){alert("Tanggal harus diisi.");return}
+ if(!Number.isFinite(amount)||amount<=0){alert("Masukkan nominal yang valid.");return}
+ if(!description){alert("Keterangan harus diisi.");return}
+
+ const data={
+  date,
+  amount,
+  type:selectedType,
+  description
+ };
+
+ const btn=document.getElementById("saveBtn");
+ btn.disabled=true;
+
+ try{
+  if(editingId!==null){
+   data.id=editingId;
+   await putData(data);
+   editingId=null;
+   btn.textContent="Simpan Transaksi";
+  }else{
+   await putData(data);
+  }
+
+  document.getElementById("amount").value="";
+  document.getElementById("description").value="";
+  document.getElementById("date").value=today();
+
+  await refresh();
+  alert("Transaksi berhasil disimpan.");
+ }catch(error){
+  alert("Gagal menyimpan transaksi.");
+ }finally{
+  btn.disabled=false;
+ }
+}
+
+function render(){
+ let totalIn=0;
+ let totalOut=0;
+ let balance=0;
+ let rows="";
+
+ transactions.forEach((t,index)=>{
+  if(t.type==="masuk"){
+   totalIn+=t.amount;
+   balance+=t.amount;
+  }else{
+   totalOut+=t.amount;
+   balance-=t.amount;
+  }
+
+  rows+=`
+  <tr>
+   <td>${index+1}</td>
+   <td>${formatDate(t.date)}</td>
+   <td class="num green">${t.type==="masuk"?rupiah(t.amount):"–"}</td>
+   <td class="num red">${t.type==="keluar"?rupiah(t.amount):"–"}</td>
+   <td>${escapeHTML(t.description)}</td>
+   <td class="num"><b>${rupiah(balance)}</b></td>
+   <td class="actions">
+    <button class="edit" onclick="editTransaction(${t.id})">Edit</button>
+    <button class="del" onclick="removeTransaction(${t.id})">Hapus</button>
+   </td>
+  </tr>`;
+ });
+
+ document.getElementById("balance").textContent=rupiah(totalIn-totalOut);
+ document.getElementById("income").textContent=rupiah(totalIn);
+ document.getElementById("expense").textContent=rupiah(totalOut);
+ document.getElementById("reportBody").innerHTML=
+  rows||'<tr><td colspan="7" class="empty">Belum ada transaksi</td></tr>';
+}
+
+function formatDate(date){
+ if(!date)return "";
+ const [y,m,d]=date.split("-");
+ return `${d}/${m}/${y}`;
+}
+
+function escapeHTML(value){
+ return String(value).replace(/[&<>"']/g,c=>({
+  "&":"&amp;","<":"&lt;",">":"&gt;",
+  '"':"&quot;","'":"&#039;"
+ })[c]);
+}
+
+async function editTransaction(id){
+ const t=transactions.find(x=>x.id===id);
+ if(!t)return;
+
+ editingId=id;
+ document.getElementById("date").value=t.date;
+ document.getElementById("amount").value=t.amount;
+ document.getElementById("description").value=t.description;
+ setType(t.type);
+ document.getElementById("saveBtn").textContent="Simpan Perubahan";
+ showPage("input");
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+
+async function removeTransaction(id){
+ if(!confirm("Yakin ingin menghapus transaksi ini?"))return;
+ try{
+  await deleteData(id);
+  if(editingId===id){
+   editingId=null;
+   document.getElementById("saveBtn").textContent="Simpan Transaksi";
+  }
+  await refresh();
+ }catch(error){
+  alert("Gagal menghapus transaksi.");
+ }
+}
+
+function exportExcel(){
+ if(transactions.length===0){
+  alert("Belum ada transaksi untuk diekspor.");
+  return;
+ }
+
+ let balance=0;
+ const rows=[[
+  "No.","Tanggal","Masuk","Keluar","Keterangan","Total"
+ ]];
+
+ transactions.forEach((t,index)=>{
+  let masuk=0,keluar=0;
+  if(t.type==="masuk"){
+   masuk=t.amount;
+   balance+=t.amount;
+  }else{
+   keluar=t.amount;
+   balance-=t.amount;
+  }
+
+  rows.push([
+   index+1,
+   formatDate(t.date),
+   masuk||"",
+   keluar||"",
+   t.description,
+   balance
+  ]);
+ });
+
+ // Export CSV yang dapat dibuka langsung dengan Microsoft Excel.
+ const csv="\uFEFF"+rows.map(row=>
+  row.map(cell=>'"'+String(cell).replace(/"/g,'""')+'"').join(";")
+ ).join("\r\n");
+
+ const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;
+ a.download="Laporan-Keuangan-"+today()+".csv";
+ document.body.appendChild(a);
+ a.click();
+ a.remove();
+ URL.revokeObjectURL(url);
+}
+
+async function init(){
+ if(!("indexedDB" in window)){
+  alert("Browser ini tidak mendukung penyimpanan lokal.");
+  return;
+ }
+ try{
+  await openDB();
+  await refresh();
+ }catch(error){
+  alert("Database tidak dapat dibuka. Coba gunakan Chrome.");
+ }
+}
+
+init();
+</script>
+</body>
+  </html>
+  
