@@ -1,9 +1,8 @@
 
-const CACHE_NAME = "keuangan-pribadi-v1";
+const CACHE_NAME = "keuangan-pribadi-v2";
 
 const FILES_TO_CACHE = [
   "./",
-  "./index.html",
   "./manifest.json",
   "./icon.png"
 ];
@@ -36,15 +35,9 @@ self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
 
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-
-      return fetch(event.request).then(response => {
-        if (
-          response &&
-          response.status === 200 &&
-          response.type === "basic"
-        ) {
+    fetch(event.request)
+      .then(response => {
+        if (response.ok && response.type === "basic") {
           const copy = response.clone();
 
           caches.open(CACHE_NAME).then(cache => {
@@ -53,9 +46,15 @@ self.addEventListener("fetch", event => {
         }
 
         return response;
-      });
-    }).catch(() => {
-      return caches.match("./index.html");
-    })
+      })
+      .catch(async () => {
+        const cached = await caches.match(event.request);
+
+        if (cached) return cached;
+
+        if (event.request.mode === "navigate") {
+          return caches.match("./");
+        }
+      })
   );
 });
