@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#166534">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon.png">
 <title>Keuangan Pribadi</title>
 
 <style>
@@ -419,6 +421,15 @@ async function init(){
 }
 
 init();
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js")
+      .then(() => console.log("Aplikasi siap digunakan offline"))
+      .catch(error => console.error("Service Worker gagal:", error));
+  });
+}
 </script>
 </body>
   </html>
