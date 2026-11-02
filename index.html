@@ -25,6 +25,25 @@ h3{font-size:17px;margin:0 0 16px}
 label{display:block;font-size:13px;font-weight:bold;margin:14px 0 7px}
 input{width:100%;padding:13px;border:1px solid #d1d5db;border-radius:9px;font-size:15px;background:white}
 .type-buttons{display:flex;gap:10px}
+ .account-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.account-buttons button {
+  padding: 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 9px;
+  background: white;
+  font-weight: bold;
+}
+
+.account-buttons button.selected {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #16a34a;
+}
 .type-buttons button{flex:1;padding:13px;border:1px solid #d1d5db;border-radius:9px;background:white;font-weight:bold}
 .type-buttons .selected.in{background:#dcfce7;color:#15803d;border-color:#16a34a}
 .type-buttons .selected.out{background:#fee2e2;color:#dc2626;border-color:#dc2626}
@@ -88,6 +107,20 @@ main{padding:12px}
 <button type="button" id="btnIn" class="selected in" onclick="setType('masuk')">＋ Masuk</button>
 <button type="button" id="btnOut" onclick="setType('keluar')">− Keluar</button>
 </div>
+ <label>Sumber Dana</label>
+<div class="account-buttons">
+  <button type="button" id="accCash"
+    class="selected" onclick="setAccount('Cash')">Cash</button>
+
+  <button type="button" id="accBank"
+    onclick="setAccount('Bank')">Bank</button>
+
+  <button type="button" id="accDana"
+    onclick="setAccount('DANA')">DANA</button>
+
+  <button type="button" id="accSpay"
+    onclick="setAccount('SPAY')">SPAY</button>
+</div>
 
 <label for="description">Keterangan</label>
 <input type="text" id="description" placeholder="Contoh: Gaji, makan, belanja">
@@ -104,6 +137,28 @@ main{padding:12px}
 <strong id="balance">Rp0</strong>
 </div>
 
+<div class="card">
+  <h3>Rincian Saldo</h3>
+  <div class="stats">
+    <div class="stat">
+      <small>Cash</small>
+      <strong id="saldoCash">Rp0</strong>
+    </div>
+    <div class="stat">
+      <small>Bank</small>
+      <strong id="saldoBank">Rp0</strong>
+    </div>
+    <div class="stat">
+      <small>DANA</small>
+      <strong id="saldoDana">Rp0</strong>
+    </div>
+    <div class="stat">
+      <small>SPAY</small>
+      <strong id="saldoSpay">Rp0</strong>
+    </div>
+  </div>
+</div>
+ 
 <div class="stats">
 <div class="stat">
 <small>Total Pemasukan</small>
@@ -127,6 +182,7 @@ main{padding:12px}
 <th>Tanggal</th>
 <th>Masuk</th>
 <th>Keluar</th>
+<th>Sumber Dana</th>
 <th>Keterangan</th>
 <th>Total</th>
 <th>Aksi</th>
@@ -148,6 +204,7 @@ main{padding:12px}
 let db;
 let transactions = [];
 let selectedType = "masuk";
+let selectedAccount = "Cash";
 let editingId = null;
 
 const DB_NAME = "KeuanganPribadiDB";
@@ -232,6 +289,23 @@ function setType(type){
   type==="keluar"?"selected out":"";
 }
 
+function setAccount(account){
+ selectedAccount = account;
+
+ const buttons = {
+  Cash: "accCash",
+  Bank: "accBank",
+  DANA: "accDana",
+  SPAY: "accSpay"
+ };
+
+ Object.entries(buttons).forEach(([name,id])=>{
+  document.getElementById(id).classList.toggle(
+   "selected", name === account
+  );
+ });
+}
+ 
 function showPage(page){
  document.getElementById("inputPage").classList.toggle("active",page==="input");
  document.getElementById("reportPage").classList.toggle("active",page==="report");
@@ -253,6 +327,7 @@ async function saveTransaction(){
   date,
   amount,
   type:selectedType,
+  account:selectedAccount,
   description
  };
 
@@ -282,27 +357,50 @@ async function saveTransaction(){
  }
 }
 
+
 function render(){
  let totalIn=0;
  let totalOut=0;
  let balance=0;
+
+ let accounts={
+  Cash:0,
+  Bank:0,
+  DANA:0,
+  SPAY:0
+ };
+
  let rows="";
 
  transactions.forEach((t,index)=>{
+  const account=t.account || "Cash";
+
+  if(!accounts.hasOwnProperty(account)){
+   accounts[account]=0;
+  }
+
+  let masuk=0;
+  let keluar=0;
+
   if(t.type==="masuk"){
+   masuk=t.amount;
    totalIn+=t.amount;
    balance+=t.amount;
+   accounts[account]+=t.amount;
   }else{
+   keluar=t.amount;
    totalOut+=t.amount;
    balance-=t.amount;
+   accounts[account]-=t.amount;
   }
 
   rows+=`
   <tr>
    <td>${index+1}</td>
    <td>${formatDate(t.date)}</td>
-   <td class="num green">${t.type==="masuk"?rupiah(t.amount):"–"}</td>
-   <td class="num red">${t.type==="keluar"?rupiah(t.amount):"–"}</td>
+   <td class="num green">${masuk?rupiah(masuk):"–"}</td>
+   <td class="num red">${keluar?rupiah(keluar):"–"}</td>
+   <td>${escapeHTML(account)}</td>
    <td>${escapeHTML(t.description)}</td>
    <td class="num"><b>${rupiah(balance)}</b></td>
    <td class="actions">
@@ -312,11 +410,29 @@ function render(){
   </tr>`;
  });
 
- document.getElementById("balance").textContent=rupiah(totalIn-totalOut);
- document.getElementById("income").textContent=rupiah(totalIn);
- document.getElementById("expense").textContent=rupiah(totalOut);
+ document.getElementById("balance").textContent=
+  rupiah(totalIn-totalOut);
+
+ document.getElementById("income").textContent=
+  rupiah(totalIn);
+
+ document.getElementById("expense").textContent=
+  rupiah(totalOut);
+
+ document.getElementById("saldoCash").textContent=
+  rupiah(accounts.Cash);
+
+ document.getElementById("saldoBank").textContent=
+  rupiah(accounts.Bank);
+
+ document.getElementById("saldoDana").textContent=
+  rupiah(accounts.DANA);
+
+ document.getElementById("saldoSpay").textContent=
+  rupiah(accounts.SPAY);
+
  document.getElementById("reportBody").innerHTML=
-  rows||'<tr><td colspan="7" class="empty">Belum ada transaksi</td></tr>';
+  rows || '<tr><td colspan="8" class="empty">Belum ada transaksi</td></tr>';
 }
 
 function formatDate(date){
@@ -341,6 +457,7 @@ async function editTransaction(id){
  document.getElementById("amount").value=t.amount;
  document.getElementById("description").value=t.description;
  setType(t.type);
+ setAccount(t.account || "Cash");
  document.getElementById("saveBtn").textContent="Simpan Perubahan";
  showPage("input");
  window.scrollTo({top:0,behavior:"smooth"});
